@@ -1,0 +1,256 @@
+---
+title: 'Case Study: How Does a Bike-Share Navigate Speedy Success?'
+author: "Yongjie 'Kingsley' Sun"
+date: "3/29/2022"
+output: html_document
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Case Study Scenario 
+
+__Cyclistic__, a bike-share company in Chicago that features more than 5,800 bicycles and 600 docking stations, sets itself apart by also offering reclining bikes, hand tricycles, and cargo bikes, making bike-share more inclusive to people with disabilities and riders who can’t use a standard two-wheeled bike. The majority of riders opt for traditional bikes; about 8% of riders use the assistive options. Cyclistic users are more likely to ride for leisure, but about 30% use them to commute to work each day.
+
+Until now, Cyclistic’s marketing strategy relied on building general awareness and appealing to broad consumer segments. One approach that helped make these things possible was the flexibility of its pricing plans: single-ride passes, full-day passes, and annual memberships. Customers who purchase single-ride or full-day passes are referred to as casual riders. Customers who purchase annual memberships are Cyclistic members.
+
+Cyclistic’s finance analysts have concluded that annual members are much more profitable than casual riders. Lily Moreno, the company's director of Marketing, believes maximizing the number of annual members will be key to future growth. Rather than creating a marketing campaign that targets all-new customers, Moreno believes there is a very good chance to convert casual riders into members.
+
+Moreno has set a clear goal: __Design marketing strategies aimed at converting casual riders into annual members.__ In order to do that, however, the marketing analyst team needs to better understand how annual members and casual riders differ, why casual riders would buy a membership, and how digital media could affect their marketing tactics. Moreno and her team are interested in analyzing the Cyclistic historical bike trip data to identify trends.
+
+## Business Objective/Goal
+
+__Design marketing strategies aimed at converting casual riders into annual members.__
+
+## Six Steps of Project Analysis
+
+### Step 1: Ask
+
+Here are three questions to guide this marketing program:  
+1. How do annual members and casual riders use Cyclistic bikes differently?  
+2. Why would casual riders buy Cyclistic annual memberships?  
+3. How can Cyclistic use digital media to influence casual riders to become members?
+
+This project will be focusing on the first question -- How do annual members and casual riders use Cyclistic bikes differently?
+
+#### Business Task
+
+* Use Cyclistic’s historical trip data to identify the patterns among casual riders and annual members.
+* Share the findings of trip data analysis with the director of marketing and the executive team of Cyclistic and provide the potential causes to the patterns. 
+* Make recommendations about the new marketing strategy to the director of marketing and the executive team based on the findings.
+
+
+### Step 2: Prepare
+
+Note: The datasets have a different name because Cyclistic is a fictional company. [All the data sources](https://divvy-tripdata.s3.amazonaws.com/index.html) used in this project are collected by Lyft Bikes and Scooters, LLC (“Bikeshare”) in the City of Chicago under the operation of Divvy bicycle sharing service. 
+
+The data has been made available by Motivate International Inc. under this [license](https://ride.divvybikes.com/data-license-agreement).
+
+This is a public dataset but data-privacy issues prohibit one from using riders’ personally identifiable information. This means that you won’t be able to connect pass purchases to credit card numbers to determine if casual riders live in the Cyclistic service area or if they have purchased multiple single passes.
+
+
+### Step 3: Process
+
+This project uses the dataset collected from January 2021 to December 2021 by Divvy bicyle sharing service. 
+
+There are data missing in the following columns from some of the dataset collected during the period above:
+
+* start_station_name  
+* start_station_id  
+* end_station_name  
+* end_station_id  
+
+The missing data do not affect the integrity of the analysis since riders are charged by how many minutes they have spent on riding instead of how many miles they have ridden according to [Lyft Bikes pricing](https://www.lyft.com/bikes/chicago-il/pricing). 
+
+Use Google's BigQuery to do the followings for each table used in this project:
+
+* Create a column called `ride_length`. Calculate the length of each ride in minutes by subtracting the column `started_at` from the column `ended_at`.  
+* Create a column called `day_of_week`, and calculate the day of the week that each ride started, noting that 1 = Sunday and 7 = Saturday.  
+* Select the columns  `ride_id`, `rideable_type`, `started_at`, `ended_at`, `ride_length`, `day_of_week`, and `member_casual` to make a new table.  
+* Download the new table and store it appropriately.  
+
+
+
+### Step 4: Analyze
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results='hide'}
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+library(formattable)
+```
+
+Upload the datasets of 2021 for analysis. 
+```{r message=FALSE}
+setwd("/Users/kingsleysun/Desktop/Google Data Analytics Certificate/Capstone Project/cleaned_trip_data")
+
+# Upload Divvy datasets (csv files) here from Jan 2021 to Dec 2021
+jan <- read_csv("202101_trip.csv")
+feb <- read_csv("202102_trip.csv")
+mar <- read_csv("202103_trip.csv")
+apr <- read_csv("202104_trip.csv")
+may <- read_csv("202105_trip.csv")
+jun <- read_csv("202106_trip.csv")
+jul <- read_csv("202107_trip.csv")
+aug <- read_csv("202108_trip.csv")
+sep <- read_csv("202109_trip.csv")
+oct <- read_csv("202110_trip.csv")
+nov <- read_csv("202111_trip.csv")
+dec <- read_csv("202112_trip.csv")
+```
+
+After inspecting all the tables uploaded and created, there is one problem that needs to be fixed:  
+There are some rides where trip-duration known as `ride_length` shows up as negative, including several hundred rides where Divvy took bikes out of circulation for Quality Control reasons. We will want to delete these rides.  
+Use `filter` to remove all rows that contain negative `ride_length` values for each table:
+
+```{r}
+# Remove "bad" data
+# The dataframe includes a few hundred entries when ride_length was negative
+jan <- filter(jan, ride_length >= 0)
+feb <- filter(feb, ride_length >= 0)
+mar <- filter(mar, ride_length >= 0)
+apr <- filter(apr, ride_length >= 0)
+may <- filter(may, ride_length >= 0)
+jun <- filter(jun, ride_length >= 0)
+jul <- filter(jul, ride_length >= 0)
+aug <- filter(aug, ride_length >= 0)
+sep <- filter(sep, ride_length >= 0)
+oct <- filter(oct, ride_length >= 0)
+nov <- filter(nov, ride_length >= 0)
+dec <- filter(dec, ride_length >= 0)
+```
+
+Consolidate data for each month of 2021 into four quarters and one big dataset of the whole year of 2021.
+```{r}
+# Stack every three months into a quarter's data frame
+q1_2021 <- bind_rows(jan, feb, mar)
+q2_2021 <- bind_rows(apr, may, jun)
+q3_2021 <- bind_rows(jul, aug, sep)
+q4_2021 <- bind_rows(oct, nov, dec)
+
+# Stack individual quarter's data frames into one big data frame
+all_trips <- bind_rows(q1_2021, q2_2021, q3_2021, q4_2021)
+```
+
+
+Make two separate tables for members and casual riders.
+```{r}
+# Create separate data frames for members and casual riders
+all_trips_member <- filter(all_trips, member_casual == 'member')
+all_trips_casual <- filter(all_trips, member_casual == 'casual')
+```
+
+Make a table of all key descriptive data on members, casual riders and overall.
+```{r}
+# Create a function to find the statistical mode 
+getmode <- function(x) {
+  ux <- unique(x)
+  tab <- tabulate(match(x, ux))
+  ux[tab == max(tab)]
+}
+
+# Get the mode of overall, members and casual riders to see which day of the week when people take the most rides
+mode_member <- getmode(all_trips_member$day_of_week)
+mode_casual <- getmode(all_trips_casual$day_of_week)
+mode_all_trips <- getmode(all_trips$day_of_week)
+
+# Make a table of all the key descriptive data on members, casual riders and overall about key indicators
+category <- c('members', 'casual_riders', 'all')
+
+min_ride_length <- c(min(all_trips_member$ride_length), min(all_trips_casual$ride_length), min(all_trips$ride_length))
+
+max_ride_length <- c(max(all_trips_member$ride_length), max(all_trips_casual$ride_length), max(all_trips$ride_length))
+
+average_ride_length <- c(mean(all_trips_member$ride_length), mean(all_trips_casual$ride_length), mean(all_trips$ride_length))
+
+day_of_the_week_with_most_trips <- c(mode_member, mode_casual, mode_all_trips)
+
+
+# Make a data frame containing all the key stats above
+df <- data.frame(category, min_ride_length, max_ride_length, average_ride_length, day_of_the_week_with_most_trips)
+formattable(df)
+```
+
+Let's visualize the data to gain insights of how members and casual riders ride differently.
+
+First, let's visualize the number of rides by rider type on weekdays and weekends throughout the whole year.
+```{r message=FALSE}
+# Visualize the number of rides by rider type
+all_trips %>%
+  mutate(weekday = wday(started_at, label = TRUE)) %>% 
+  group_by(member_casual, weekday) %>% 
+  summarise(number_of_rides = n()
+            ,average_duration = mean(ride_length)) %>% 
+  arrange(member_casual, weekday)  %>% 
+  ggplot(aes(x = weekday, y = number_of_rides, fill = member_casual)) +
+  geom_col(position = "dodge") + 
+  labs(x = 'Weekday', y = 'Number of rides', title = 'The Number of Rides by Rider Type on Weekdays and Weekends in 2021')
+
+```
+
+As the histogram indicates, there is a significant difference between members and casual riders on weekends in terms of the number of trips. Casual riders take more trips than members on weekends.
+
+Second, let's take a look at the average ride duration for two groups -- members and casual riders -- on weekdays and weekends in 2021.  
+```{r message=FALSE}
+# Create a visualization for average duration
+all_trips %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>% 
+  group_by(member_casual, weekday) %>% 
+  summarise(number_of_rides = n()
+            ,average_duration = mean(ride_length)) %>% 
+  arrange(member_casual, weekday)  %>% 
+  ggplot(aes(x = weekday, y = average_duration, fill = member_casual)) +
+  geom_col(position = "dodge") + 
+  labs(x = 'Weekday', y = 'Average ride duration', title = 'The Average Ride Duration by Rider Type on Weekdays and Weekends in 2021')
+
+```
+
+The graph suggests on any given day of the week in 2021, the average ride duration of casual riders is way more than the average ride duration of members.
+
+
+Since the business objective is to convert casual riders into annual members, it is worth investigating the behavior of casual riders alone.
+
+First, let's look at the number of rides by casual riders on weekdays and weekends in 2021.
+```{r}
+all_trips_casual %>%
+  mutate(weekday = wday(started_at, label = TRUE)) %>% 
+  group_by(weekday) %>% 
+  summarise(number_of_rides = n()
+            ,average_duration = mean(ride_length)) %>% 
+  arrange(weekday)  %>% 
+  ggplot(aes(x = weekday, y = number_of_rides)) +
+  geom_col(position = "dodge") + 
+  labs(x = 'Weekday', y = 'Number of rides', title = 'The Number of Rides by Casual Riders on Weekdays and Weekends in 2021')
+```
+
+The histogram above gives us the insight that casual riders tend to take significantly more rides on weekends. 
+
+Now, let's visualize the number of rides by casual riders in every month in 2021.
+```{r}
+all_trips_casual %>%
+  mutate(month_of_the_year = month(started_at, label = TRUE)) %>% 
+  group_by(month_of_the_year) %>% 
+  summarise(number_of_rides = n()
+            ,average_duration = mean(ride_length)) %>% 
+  arrange(month_of_the_year)  %>% 
+  ggplot(aes(x = month_of_the_year, y = number_of_rides)) + geom_col() +
+  labs(x = 'Month of the year', y = 'Number of rides', title = 'The Number of Rides by Casual Riders in Every Month of 2021')
+ 
+
+```
+
+As the histogram shows, there is a significant amount of increase on the number of rides by casual riders from June to September compared to other months of the year. 
+
+
+
+### Step 5: Share
+
+See the presentation of this project [here](https://docs.google.com/presentation/d/1ek_3bIqVgUxYl5DPp2BpiJgVKzwgrU8fEHgT34q37fk/edit?usp=sharing).
+
+
+### Step 6: Act
+
+See the recommendations regarding the business goal [here](https://docs.google.com/presentation/d/1ek_3bIqVgUxYl5DPp2BpiJgVKzwgrU8fEHgT34q37fk/edit?usp=sharing).
+
